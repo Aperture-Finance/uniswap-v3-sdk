@@ -68,7 +68,7 @@ export class Pool {
    * @param liquidity The current value of in range liquidity
    * @param tickCurrent The current tick of the pool
    * @param ticks The current state of the pool ticks or a data provider that can return tick data
-   * @param tickSpacing The spacing between ticks
+   * @param tickSpacing The spacing between ticks, if undefined, it will be set to TICK_SPACINGS[fee] which only suppose to work for UNIV3 and PCSV3
    */
   public constructor(
     tokenA: Token,

@@ -47,6 +47,16 @@ describe('Pool', () => {
       }).toThrow('PRICE_BOUNDS')
     })
 
+    it('tickSpacing Missing', () => {
+      expect(() => {
+        new Pool(USDC, WETH9[1], FeeAmount.MEDIUM + 1, encodeSqrtRatioX96(1, 1), 0, 1, [])
+      }).toThrow('TICK_SPACING Missing')
+    })
+
+    it('works with custom tickSpacing', () => {
+      new Pool(USDC, WETH9[1], FeeAmount.MEDIUM + 1, encodeSqrtRatioX96(1, 1), 0, 0, [], 30)
+    })
+
     it('works with valid arguments for empty pool medium fee', () => {
       new Pool(USDC, WETH9[1], FeeAmount.MEDIUM, encodeSqrtRatioX96(1, 1), 0, 0, [])
     })
