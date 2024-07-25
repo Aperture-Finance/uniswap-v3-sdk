@@ -42,7 +42,7 @@ export class Pool {
   private _token0Price?: Price<Token, Token>
   private _token1Price?: Price<Token, Token>
 
-  // TODO: replace with tickSpacing
+  // we don't use it
   public static getAddress(
     tokenA: Token,
     tokenB: Token,
