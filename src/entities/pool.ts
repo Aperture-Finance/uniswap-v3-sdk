@@ -32,7 +32,8 @@ const NO_TICK_DATA_PROVIDER_DEFAULT = new NoTickDataProvider()
 export class Pool {
   public readonly token0: Token
   public readonly token1: Token
-  public readonly fee: FeeAmount
+  public readonly fee: number
+  public readonly tickSpacing: number
   public readonly sqrtRatioX96: JSBI
   public readonly liquidity: JSBI
   public readonly tickCurrent: number
@@ -41,6 +42,7 @@ export class Pool {
   private _token0Price?: Price<Token, Token>
   private _token1Price?: Price<Token, Token>
 
+  // TODO: replace with tickSpacing
   public static getAddress(
     tokenA: Token,
     tokenB: Token,
@@ -66,17 +68,20 @@ export class Pool {
    * @param liquidity The current value of in range liquidity
    * @param tickCurrent The current tick of the pool
    * @param ticks The current state of the pool ticks or a data provider that can return tick data
+   * @param tickSpacing The spacing between ticks
    */
   public constructor(
     tokenA: Token,
     tokenB: Token,
-    fee: FeeAmount,
+    fee: number,
     sqrtRatioX96: BigintIsh,
     liquidity: BigintIsh,
     tickCurrent: number,
-    ticks: TickDataProvider | (Tick | TickConstructorArgs)[] = NO_TICK_DATA_PROVIDER_DEFAULT
+    ticks: TickDataProvider | (Tick | TickConstructorArgs)[] = NO_TICK_DATA_PROVIDER_DEFAULT,
+    tickSpacing?: number
   ) {
     invariant(Number.isInteger(fee) && fee < 1_000_000, 'FEE')
+    invariant(tickSpacing || Object.values(FeeAmount).includes(fee), 'TICK_SPACING Missing')
 
     const tickCurrentSqrtRatioX96 = TickMath.getSqrtRatioAtTick(tickCurrent)
     const nextTickSqrtRatioX96 = TickMath.getSqrtRatioAtTick(tickCurrent + 1)
@@ -88,10 +93,11 @@ export class Pool {
     // always create a copy of the list since we want the pool's tick list to be immutable
     ;[this.token0, this.token1] = tokenA.sortsBefore(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA]
     this.fee = fee
+    this.tickSpacing = tickSpacing ?? TICK_SPACINGS[fee as FeeAmount]
     this.sqrtRatioX96 = JSBI.BigInt(sqrtRatioX96)
     this.liquidity = JSBI.BigInt(liquidity)
     this.tickCurrent = tickCurrent
-    this.tickDataProvider = Array.isArray(ticks) ? new TickListDataProvider(ticks, TICK_SPACINGS[fee]) : ticks
+    this.tickDataProvider = Array.isArray(ticks) ? new TickListDataProvider(ticks, this.tickSpacing) : ticks
   }
 
   /**
@@ -172,7 +178,16 @@ export class Pool {
     const outputToken = zeroForOne ? this.token1 : this.token0
     return [
       CurrencyAmount.fromRawAmount(outputToken, JSBI.multiply(outputAmount, NEGATIVE_ONE)),
-      new Pool(this.token0, this.token1, this.fee, sqrtRatioX96, liquidity, tickCurrent, this.tickDataProvider)
+      new Pool(
+        this.token0,
+        this.token1,
+        this.fee,
+        sqrtRatioX96,
+        liquidity,
+        tickCurrent,
+        this.tickDataProvider,
+        this.tickSpacing
+      )
     ]
   }
 
@@ -198,7 +213,16 @@ export class Pool {
     const inputToken = zeroForOne ? this.token0 : this.token1
     return [
       CurrencyAmount.fromRawAmount(inputToken, inputAmount),
-      new Pool(this.token0, this.token1, this.fee, sqrtRatioX96, liquidity, tickCurrent, this.tickDataProvider)
+      new Pool(
+        this.token0,
+        this.token1,
+        this.fee,
+        sqrtRatioX96,
+        liquidity,
+        tickCurrent,
+        this.tickDataProvider,
+        this.tickSpacing
+      )
     ]
   }
 
@@ -312,9 +336,5 @@ export class Pool {
       liquidity: state.liquidity,
       tickCurrent: state.tick
     }
-  }
-
-  public get tickSpacing(): number {
-    return TICK_SPACINGS[this.fee]
   }
 }
