@@ -198,7 +198,11 @@ export abstract class NonfungiblePositionManager {
     }
   }
 
-  public static addCallParameters(position: Position, options: AddLiquidityOptions, isSlipStream?: boolean): MethodParameters {
+  public static addCallParameters(
+    position: Position,
+    options: AddLiquidityOptions,
+    isSlipStream?: boolean
+  ): MethodParameters {
     invariant(JSBI.greaterThan(position.liquidity, ZERO), 'ZERO_LIQUIDITY')
 
     const calldatas: string[] = []
@@ -231,39 +235,40 @@ export abstract class NonfungiblePositionManager {
       const recipient: string = validateAndParseAddress(options.recipient)
 
       calldatas.push(
-        isSlipStream ? NonfungiblePositionManager.SLILPSTREAM_INTERFACE.encodeFunctionData('mint', [
-          {
-            token0: position.pool.token0.address,
-            token1: position.pool.token1.address,
-            tickSpacing: position.pool.tickSpacing,
-            tickLower: position.tickLower,
-            tickUpper: position.tickUpper,
-            amount0Desired: toHex(amount0Desired),
-            amount1Desired: toHex(amount1Desired),
-            amount0Min,
-            amount1Min,
-            recipient,
-            deadline,
-            // If the pool doesn't already exist, this parameter is used to create the pool with this initial price.
-            // We currently don't support SlipStream pool creation so we always set this to zero.
-            sqrtPriceX96: 0,
-          }
-        ]) :
-          NonfungiblePositionManager.INTERFACE.encodeFunctionData('mint', [
-            {
-              token0: position.pool.token0.address,
-              token1: position.pool.token1.address,
-              fee: position.pool.fee,
-              tickLower: position.tickLower,
-              tickUpper: position.tickUpper,
-              amount0Desired: toHex(amount0Desired),
-              amount1Desired: toHex(amount1Desired),
-              amount0Min,
-              amount1Min,
-              recipient,
-              deadline
-            }
-          ])
+        isSlipStream
+          ? NonfungiblePositionManager.SLILPSTREAM_INTERFACE.encodeFunctionData('mint', [
+              {
+                token0: position.pool.token0.address,
+                token1: position.pool.token1.address,
+                tickSpacing: position.pool.tickSpacing,
+                tickLower: position.tickLower,
+                tickUpper: position.tickUpper,
+                amount0Desired: toHex(amount0Desired),
+                amount1Desired: toHex(amount1Desired),
+                amount0Min,
+                amount1Min,
+                recipient,
+                deadline,
+                // If the pool doesn't already exist, this parameter is used to create the pool with this initial price.
+                // We currently don't support SlipStream pool creation so we always set this to zero.
+                sqrtPriceX96: 0
+              }
+            ])
+          : NonfungiblePositionManager.INTERFACE.encodeFunctionData('mint', [
+              {
+                token0: position.pool.token0.address,
+                token1: position.pool.token1.address,
+                fee: position.pool.fee,
+                tickLower: position.tickLower,
+                tickUpper: position.tickUpper,
+                amount0Desired: toHex(amount0Desired),
+                amount1Desired: toHex(amount1Desired),
+                amount0Min,
+                amount1Min,
+                recipient,
+                deadline
+              }
+            ])
       )
     } else {
       // increase
