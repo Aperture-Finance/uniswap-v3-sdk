@@ -14,6 +14,7 @@ import { ONE, ZERO } from './internalConstants'
 import { MethodParameters, toHex } from './utils/calldata'
 import { Interface } from '@ethersproject/abi'
 import INonfungiblePositionManager from '@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json'
+import SlipStreamNonfungiblePositionManagerAbi from './abi/slipstreamNonfungiblePositionManager.json'
 import { PermitOptions, SelfPermit } from './selfPermit'
 import { ADDRESS_ZERO } from './constants'
 import { Pool } from './entities'
@@ -174,6 +175,7 @@ export interface RemoveLiquidityOptions {
 
 export abstract class NonfungiblePositionManager {
   public static INTERFACE: Interface = new Interface(INonfungiblePositionManager.abi)
+  public static SLILPSTREAM_INTERFACE: Interface = new Interface(SlipStreamNonfungiblePositionManagerAbi)
 
   /**
    * Cannot be constructed.
@@ -196,7 +198,7 @@ export abstract class NonfungiblePositionManager {
     }
   }
 
-  public static addCallParameters(position: Position, options: AddLiquidityOptions): MethodParameters {
+  public static addCallParameters(position: Position, options: AddLiquidityOptions, isSlipStream?: boolean): MethodParameters {
     invariant(JSBI.greaterThan(position.liquidity, ZERO), 'ZERO_LIQUIDITY')
 
     const calldatas: string[] = []
@@ -229,11 +231,11 @@ export abstract class NonfungiblePositionManager {
       const recipient: string = validateAndParseAddress(options.recipient)
 
       calldatas.push(
-        NonfungiblePositionManager.INTERFACE.encodeFunctionData('mint', [
+        isSlipStream ? NonfungiblePositionManager.SLILPSTREAM_INTERFACE.encodeFunctionData('mint', [
           {
             token0: position.pool.token0.address,
             token1: position.pool.token1.address,
-            fee: position.pool.fee,
+            tickSpacing: position.pool.tickSpacing,
             tickLower: position.tickLower,
             tickUpper: position.tickUpper,
             amount0Desired: toHex(amount0Desired),
@@ -241,9 +243,27 @@ export abstract class NonfungiblePositionManager {
             amount0Min,
             amount1Min,
             recipient,
-            deadline
+            deadline,
+            // If the pool doesn't already exist, this parameter is used to create the pool with this initial price.
+            // We currently don't support SlipStream pool creation so we always set this to zero.
+            sqrtPriceX96: 0,
           }
-        ])
+        ]) :
+          NonfungiblePositionManager.INTERFACE.encodeFunctionData('mint', [
+            {
+              token0: position.pool.token0.address,
+              token1: position.pool.token1.address,
+              fee: position.pool.fee,
+              tickLower: position.tickLower,
+              tickUpper: position.tickUpper,
+              amount0Desired: toHex(amount0Desired),
+              amount1Desired: toHex(amount1Desired),
+              amount0Min,
+              amount1Min,
+              recipient,
+              deadline
+            }
+          ])
       )
     } else {
       // increase
